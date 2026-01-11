@@ -188,39 +188,195 @@ window.addEventListener('load', () => {
     }
 });
 
-// Contact Form Handling
+// Contact Form Handling with FormSubmit (Zero-cost solution)
 const contactForm = document.getElementById('contactForm');
 
 if (contactForm) {
     contactForm.addEventListener('submit', (e) => {
-        e.preventDefault();
+        // Get form elements
+        const nameInput = contactForm.querySelector('#name');
+        const emailInput = contactForm.querySelector('#email');
+        const messageInput = contactForm.querySelector('#message');
+        const submitButton = contactForm.querySelector('button[type="submit"]');
         
-        // Get form data
-        const formData = new FormData(contactForm);
-        const name = formData.get('name');
-        const email = formData.get('email');
-        const message = formData.get('message');
+        // Get form values
+        const name = nameInput.value.trim();
+        const email = emailInput.value.trim();
+        const message = messageInput.value.trim();
         
-        // Simple validation
-        if (!name || !email || !message) {
-            alert('Please fill in all fields.');
-            return;
+        // Clear previous error states
+        clearFormErrors();
+        
+        // Validation
+        let hasErrors = false;
+        
+        // Name validation
+        if (!name) {
+            showFieldError(nameInput, 'Name is required');
+            hasErrors = true;
+        } else if (name.length < 2) {
+            showFieldError(nameInput, 'Name must be at least 2 characters');
+            hasErrors = true;
         }
         
         // Email validation
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
-            alert('Please enter a valid email address.');
+        if (!email) {
+            showFieldError(emailInput, 'Email is required');
+            hasErrors = true;
+        } else {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) {
+                showFieldError(emailInput, 'Please enter a valid email address');
+                hasErrors = true;
+            }
+        }
+        
+        // Message validation
+        if (!message) {
+            showFieldError(messageInput, 'Message is required');
+            hasErrors = true;
+        } else if (message.length < 10) {
+            showFieldError(messageInput, 'Message must be at least 10 characters');
+            hasErrors = true;
+        }
+        
+        // If validation fails, prevent form submission
+        if (hasErrors) {
+            e.preventDefault();
             return;
         }
         
-        // In a real application, you would send this data to a server
-        // For now, we'll just show a success message
-        alert(`Thank you, ${name}! Your message has been received. We'll get back to you soon.`);
+        // If validation passes, allow form to submit naturally to FormSubmit
+        // FormSubmit works best with natural form submission
+        // Set up redirect URL to come back to this page with success parameter
+        const currentUrl = window.location.origin + window.location.pathname;
+        const nextInput = contactForm.querySelector('input[name="_next"]');
+        if (nextInput) {
+            nextInput.value = currentUrl + '?success=true&name=' + encodeURIComponent(name);
+        } else {
+            // Create _next input if it doesn't exist
+            const nextHidden = document.createElement('input');
+            nextHidden.type = 'hidden';
+            nextHidden.name = '_next';
+            nextHidden.value = currentUrl + '?success=true&name=' + encodeURIComponent(name);
+            contactForm.appendChild(nextHidden);
+        }
         
+        // Disable submit button and show loading state
+        submitButton.disabled = true;
+        submitButton.textContent = 'Sending...';
+        
+        // Allow form to submit naturally - don't prevent default
+        // FormSubmit will redirect back to this page with success parameter
+    });
+    
+    // Check for success parameter in URL (after FormSubmit redirect)
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('success') === 'true') {
+        const name = urlParams.get('name') || 'there';
+        showSuccessMessage(contactForm, `Thank you, ${name}! Your message has been sent successfully. I'll get back to you soon.`);
+        // Clean up URL
+        window.history.replaceState({}, document.title, window.location.pathname);
         // Reset form
         contactForm.reset();
+    }
+}
+
+
+// Form validation helper functions
+function showFieldError(input, message) {
+    input.classList.add('error');
+    input.style.borderColor = '#e74c3c';
+    
+    // Remove existing error message
+    const existingError = input.parentElement.querySelector('.error-message');
+    if (existingError) {
+        existingError.remove();
+    }
+    
+    // Add error message
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'error-message';
+    errorDiv.textContent = message;
+    errorDiv.style.color = '#e74c3c';
+    errorDiv.style.fontSize = '0.875rem';
+    errorDiv.style.marginTop = '0.25rem';
+    input.parentElement.appendChild(errorDiv);
+}
+
+function clearFormErrors() {
+    const formGroups = document.querySelectorAll('.form-group');
+    formGroups.forEach(group => {
+        const input = group.querySelector('input, textarea');
+        if (input) {
+            input.classList.remove('error');
+            input.style.borderColor = '';
+        }
+        const errorMessage = group.querySelector('.error-message');
+        if (errorMessage) {
+            errorMessage.remove();
+        }
     });
+}
+
+function showSuccessMessage(form, message) {
+    // Remove existing messages
+    const existingMessage = form.querySelector('.form-message');
+    if (existingMessage) {
+        existingMessage.remove();
+    }
+    
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'form-message success-message';
+    messageDiv.textContent = message;
+    messageDiv.style.cssText = `
+        background: linear-gradient(135deg, rgba(127, 179, 163, 0.1), rgba(168, 197, 160, 0.1));
+        border: 2px solid var(--color-secondary);
+        border-radius: 12px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        color: var(--color-primary);
+        font-weight: 500;
+        text-align: center;
+    `;
+    form.insertBefore(messageDiv, form.firstChild);
+    
+    // Scroll to message
+    messageDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    
+    // Remove message after 5 seconds
+    setTimeout(() => {
+        messageDiv.remove();
+    }, 5000);
+}
+
+function showErrorMessage(message) {
+    const contactForm = document.getElementById('contactForm');
+    if (!contactForm) return;
+    
+    // Remove existing messages
+    const existingMessage = contactForm.querySelector('.form-message');
+    if (existingMessage) {
+        existingMessage.remove();
+    }
+    
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'form-message error-message';
+    messageDiv.textContent = message;
+    messageDiv.style.cssText = `
+        background: rgba(231, 76, 60, 0.1);
+        border: 2px solid #e74c3c;
+        border-radius: 12px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        color: #e74c3c;
+        font-weight: 500;
+        text-align: center;
+    `;
+    contactForm.insertBefore(messageDiv, contactForm.firstChild);
+    
+    // Scroll to message
+    messageDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 // Intersection Observer for Fade-in Animations
