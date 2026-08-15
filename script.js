@@ -62,7 +62,7 @@ function setActiveLinkByPage() {
         'mens-mental-health',
         'couples-counseling',
         'trauma-ptsd-therapy',
-        'somatic-therapy-ifs'
+        'accelerated-resolution-therapy'
     ]);
 
     let activeLink = null;

@@ -1155,7 +1155,7 @@ p {
     --service-hero-image: url('assests/05 Images/backgrounds/4.jpg');
 }
 
-.service-hero-somatic {
+.service-hero-art {
     --service-hero-image: url('assests/05 Images/backgrounds/3.jpg');
     background-position: center 42%;
 }
