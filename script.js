@@ -2,14 +2,29 @@
 const mobileMenuToggle = document.querySelector('.mobile-menu-toggle');
 const navMenu = document.querySelector('.nav-menu');
 const navLinks = document.querySelectorAll('.nav-link');
+const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function activateNavLink(targetLink) {
+    navLinks.forEach(link => {
+        link.classList.remove('active');
+        link.removeAttribute('aria-current');
+    });
+
+    if (targetLink) {
+        targetLink.classList.add('active');
+        targetLink.setAttribute('aria-current', 'page');
+    }
+}
 
 if (mobileMenuToggle && navMenu) {
     mobileMenuToggle.addEventListener('click', () => {
         navMenu.classList.toggle('active');
+        const isOpen = navMenu.classList.contains('active');
+        mobileMenuToggle.setAttribute('aria-expanded', String(isOpen));
         
         // Animate hamburger icon
         const spans = mobileMenuToggle.querySelectorAll('span');
-        if (navMenu.classList.contains('active')) {
+        if (isOpen) {
             spans[0].style.transform = 'rotate(45deg) translate(5px, 5px)';
             spans[1].style.opacity = '0';
             spans[2].style.transform = 'rotate(-45deg) translate(7px, -6px)';
@@ -27,6 +42,7 @@ navLinks.forEach(link => {
         if (navMenu) {
             navMenu.classList.remove('active');
             if (mobileMenuToggle) {
+                mobileMenuToggle.setAttribute('aria-expanded', 'false');
                 const spans = mobileMenuToggle.querySelectorAll('span');
                 spans[0].style.transform = 'none';
                 spans[1].style.opacity = '1';
@@ -39,26 +55,27 @@ navLinks.forEach(link => {
 // Set active link based on current page
 function setActiveLinkByPage() {
     const currentPage = window.location.pathname.split('/').pop() || 'index.html';
+    const currentPageStem = currentPage.replace(/\.html$/, '');
     const hash = window.location.hash;
-    
-    navLinks.forEach(link => {
-        const href = link.getAttribute('href');
-        // Remove active class from all links first
-        link.classList.remove('active');
-        
-        // If there's a hash in URL, prioritize that
-        if (hash && href === hash) {
-            link.classList.add('active');
-        }
-        // Otherwise, set active based on page
-        else if (href === currentPage || (currentPage === 'index.html' && href === 'index.html' && !hash)) {
-            link.classList.add('active');
-        } else if (currentPage === 'about.html' && href === 'about.html') {
-            link.classList.add('active');
-        } else if (currentPage === 'contact.html' && href === 'contact.html') {
-            link.classList.add('active');
-        }
-    });
+    const servicePages = new Set([
+        'first-responder-therapy',
+        'mens-mental-health',
+        'couples-counseling',
+        'trauma-ptsd-therapy',
+        'somatic-therapy-ifs'
+    ]);
+
+    let activeLink = null;
+
+    if (servicePages.has(currentPageStem)) {
+        activeLink = Array.from(navLinks).find(link => link.getAttribute('href') === 'index.html#services');
+    } else if (currentPage === 'index.html' && hash === '#services') {
+        activeLink = Array.from(navLinks).find(link => link.getAttribute('href') === '#services');
+    } else {
+        activeLink = Array.from(navLinks).find(link => link.getAttribute('href') === currentPage);
+    }
+
+    activateNavLink(activeLink);
 }
 
 // Initialize active link on page load
@@ -94,14 +111,11 @@ navLinks.forEach(link => {
                 const headerHeight = header.offsetHeight;
                 const targetPosition = targetSection.offsetTop - headerHeight;
                 
-                // Remove active from all links
-                navLinks.forEach(l => l.classList.remove('active'));
-                // Add active to clicked link
-                link.classList.add('active');
+                activateNavLink(link);
                 
                 window.scrollTo({
                     top: targetPosition,
-                    behavior: 'smooth'
+                    behavior: prefersReducedMotion ? 'auto' : 'smooth'
                 });
             }
         }
@@ -116,14 +130,11 @@ navLinks.forEach(link => {
                     const headerHeight = header.offsetHeight;
                     const targetPosition = targetSection.offsetTop - headerHeight;
                     
-                    // Remove active from all links
-                    navLinks.forEach(l => l.classList.remove('active'));
-                    // Add active to clicked link
-                    link.classList.add('active');
+                    activateNavLink(link);
                     
                     window.scrollTo({
                         top: targetPosition,
-                        behavior: 'smooth'
+                        behavior: prefersReducedMotion ? 'auto' : 'smooth'
                     });
                 }
             } else {
@@ -136,32 +147,20 @@ navLinks.forEach(link => {
 
 // Active Navigation Link on Scroll (for same-page sections)
 function setActiveNavLinkOnScroll() {
-    const sections = document.querySelectorAll('section[id]');
-    if (sections.length === 0) return;
-    
-    const scrollY = window.pageYOffset;
+    const currentPage = window.location.pathname.split('/').pop() || 'index.html';
+    if (currentPage !== 'index.html') return;
+
+    const servicesSection = document.getElementById('services');
+    if (!servicesSection) return;
+
     const headerHeight = header?.offsetHeight || 70;
-    
-    sections.forEach(section => {
-        const sectionHeight = section.offsetHeight;
-        const sectionTop = section.offsetTop - headerHeight - 50;
-        const sectionId = section.getAttribute('id');
-        const navLink = document.querySelector(`.nav-link[href="#${sectionId}"]`);
-        
-        if (scrollY >= sectionTop && scrollY < sectionTop + sectionHeight) {
-            // Remove active from all links
-            navLinks.forEach(link => {
-                // Only remove active from hash links, keep page links active
-                if (link.getAttribute('href').startsWith('#')) {
-                    link.classList.remove('active');
-                }
-            });
-            // Add active to matching section link
-            if (navLink) {
-                navLink.classList.add('active');
-            }
-        }
-    });
+    const activationPoint = window.pageYOffset + headerHeight + 90;
+    const servicesTop = servicesSection.offsetTop;
+    const servicesBottom = servicesTop + servicesSection.offsetHeight;
+    const isViewingServices = activationPoint >= servicesTop && activationPoint < servicesBottom;
+    const targetLink = document.querySelector(isViewingServices ? '.nav-link[href="#services"]' : '.nav-link[href="index.html"]');
+
+    activateNavLink(targetLink);
 }
 
 // Update active link on scroll
@@ -181,7 +180,7 @@ window.addEventListener('load', () => {
                 const targetPosition = targetSection.offsetTop - headerHeight;
                 window.scrollTo({
                     top: targetPosition,
-                    behavior: 'smooth'
+                    behavior: prefersReducedMotion ? 'auto' : 'smooth'
                 });
             }, 100);
         }
@@ -342,7 +341,7 @@ function showSuccessMessage(form, message) {
     form.insertBefore(messageDiv, form.firstChild);
     
     // Scroll to message
-    messageDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    messageDiv.scrollIntoView({ behavior: prefersReducedMotion ? 'auto' : 'smooth', block: 'nearest' });
     
     // Remove message after 5 seconds
     setTimeout(() => {
@@ -376,7 +375,7 @@ function showErrorMessage(message) {
     contactForm.insertBefore(messageDiv, contactForm.firstChild);
     
     // Scroll to message
-    messageDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    messageDiv.scrollIntoView({ behavior: prefersReducedMotion ? 'auto' : 'smooth', block: 'nearest' });
 }
 
 // Intersection Observer for Fade-in Animations
@@ -431,7 +430,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // Hero Background Image Carousel
 function initHeroCarousel() {
     const heroImages = document.querySelectorAll('.hero-bg-image');
-    if (heroImages.length === 0) return;
+    if (heroImages.length === 0 || prefersReducedMotion) return;
     
     let currentIndex = 0;
     
@@ -461,7 +460,7 @@ window.addEventListener('scroll', () => {
     const heroPattern = document.querySelector('.hero-pattern');
     const scrollIndicator = document.getElementById('scrollIndicator');
     
-    if (heroPattern && scrolled < window.innerHeight) {
+    if (heroPattern && !prefersReducedMotion && scrolled < window.innerHeight) {
         heroPattern.style.transform = `translateY(${scrolled * 0.5}px)`;
     }
     
@@ -484,10 +483,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 const targetPosition = introSection.offsetTop - headerHeight;
                 window.scrollTo({
                     top: targetPosition,
-                    behavior: 'smooth'
+                    behavior: prefersReducedMotion ? 'auto' : 'smooth'
                 });
             }
         });
     }
 });
-
